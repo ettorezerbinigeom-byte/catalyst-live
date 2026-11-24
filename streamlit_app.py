@@ -109,6 +109,43 @@ header[data-testid="stHeader"]{background:transparent;height:2rem;}
 .passi li{margin:0 0 6px;padding-left:2px;}
 .foot{color:var(--mut);font-size:.78rem;line-height:1.45;margin-top:14px;}
 div[data-testid="stSegmentedControl"] button p{font-weight:700;}
+.st-key-vista [data-testid="stButtonGroup"]>div{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
+.st-key-vista [data-testid="stButtonGroup"]>div::-webkit-scrollbar{display:none;}
+.st-key-vista button{flex:none;}
+.res{font-family:Archivo,"Arial Narrow",sans-serif;font-weight:800;font-size:2.3rem;line-height:1;letter-spacing:-.02em;}
+.wl{display:flex;height:9px;border-radius:99px;overflow:hidden;background:var(--sf2);border:1px solid var(--line);margin:10px 0 4px;}
+.wl i{display:block;height:100%;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 10px;}
+.grid2 .card{margin:0;padding:11px 12px;}
+.grid2 b{font-family:Archivo,"Arial Narrow",sans-serif;font-size:1.35rem;font-weight:800;display:block;line-height:1.1;}
+.op{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line);}
+.op:first-child{border-top:0;padding-top:2px;}
+.op .l{min-width:0;}
+.op .t{font-family:var(--mono);font-weight:600;}
+.op .d{font-family:var(--mono);font-size:.76rem;color:var(--mut);}
+.op .r{text-align:right;font-family:var(--mono);font-weight:600;white-space:nowrap;}
+.op .r small{display:block;font-weight:500;font-size:.74rem;color:var(--mut);}
+.op.todo .r{color:var(--may);font-size:.8rem;}
+.day{display:grid;grid-template-columns:54px 1fr;gap:10px;margin:0 0 10px;}
+.dbox{background:var(--sf);border:1px solid var(--line);border-radius:10px;text-align:center;padding:5px 0;line-height:1.1;height:max-content;}
+.dbox .w{font-family:var(--mono);font-size:.66rem;text-transform:uppercase;color:var(--mut);}
+.dbox .n{font-family:Archivo,"Arial Narrow",sans-serif;font-weight:800;font-size:1.25rem;}
+.dbox.oggi{background:var(--acc);border-color:var(--acc);}
+.dbox.oggi *{color:#fff;}
+.ev{background:var(--sf);border:1px solid var(--line);border-radius:12px;padding:9px 11px;margin:0 0 6px;font-size:.92rem;}
+.ev.ord{border-color:#b5c1ef;}
+.ev.mer{background:transparent;border-style:dashed;}
+.ev.fatto b{text-decoration:line-through;color:var(--mut);}
+.mese{font-family:Archivo,"Arial Narrow",sans-serif;font-weight:800;font-size:1.15rem;margin:16px 2px 8px;text-transform:capitalize;}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px;}
+details.sk{margin-top:8px;border-top:1px solid var(--line);padding-top:6px;}
+details.sk summary{cursor:pointer;font-weight:700;color:var(--acc);font-size:.9rem;}
+details.sk p{margin:6px 0 0;font-size:.9rem;line-height:1.45;}
+.ctl{display:flex;gap:8px;align-items:flex-start;margin:6px 0 0;font-size:.88rem;line-height:1.4;}
+.ctl .m{flex:none;width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-weight:800;font-size:.8rem;}
+.m.si{background:var(--yes-s);color:var(--yes);} .m.no{background:var(--no-s);color:var(--no);}
+.m.dubbio{background:var(--may-s);color:var(--may);} .m.nd{background:var(--sf2);color:var(--mut);border:1px dashed var(--line);}
+a.fonte{font-size:.84rem;}
 </style>""", unsafe_allow_html=True)
 
 
@@ -654,12 +691,8 @@ def vista_oggi(dati, live, s, cap, aperta, oggi, xbi_a):
                          f'{e(c.get("ora", ""))}</span><b>{e(c.get("titolo"))}</b>'
                          f'{f"<span class=tag {az}>{e(c.get("azione"))}</span>" if az else ""}{px}'
                          f'<div class="sub">{e(c.get("perche"))}</div></div>')
-        carta("".join(righe) + '<div class="sub" style="margin-top:6px">Le spunte le metti nell\'app Catalyst: '
-              f'qui arrivano al prossimo aggiornamento del piano.</div>')
-
-    app_url = dati.get("app") or ""
-    if app_url.startswith("https://"):
-        md(f'<a class="btn" href="{e(app_url)}" target="_blank">Apri l\'app Catalyst (piano, spunte, news)</a>')
+        carta("".join(righe) + '<div class="sub" style="margin-top:6px">Quando hai fatto un ordine scrivimelo '
+              'in chat: lo segno io e lo trovi nello Storico.</div>')
 
     news = dati.get("news", [])[:3]
     if news:
@@ -737,7 +770,7 @@ def vista_decisioni(dati, live, oggi, xbi_a):
                           'biotech tiene. La regola dice di non tenerla nel verdetto.</div>')
         carta(f'{testa_titolo(tk, t.get("nome") or nomi.get(tk, ""), q, sym)}'
               f'<div class="sub" style="margin-top:6px">{e(c.get("titolo"))}{tags}</div>'
-              f'<div style="margin-top:6px">{righe}</div>')
+              f'<div style="margin-top:6px">{righe}</div>{scheda_titolo(t)}')
 
     altri = dati.get("altri", [])
     if altri:
@@ -787,6 +820,251 @@ def vista_ribasso(dati, live, xbi_a):
                       f'<div class="sub">{e(r.get("lezione"))}</div></div>' for r in passati))
 
 
+# ---------------------------------------------------------------- scheda, storico, calendario, news
+CONTROLLI = [("fase3", "Fase 3 centrata"), ("fda", "Nessun no dall'FDA"), ("prior", "Revisione prioritaria"),
+             ("cassa", "Cassa per 2 anni"), ("salita", "Salita sotto il 50%")]
+SEGNO = {"si": "✓", "no": "✗", "dubbio": "?", "nd": "–"}
+MESI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre",
+        "ottobre", "novembre", "dicembre"]
+
+
+def link_https(u, testo):
+    u = str(u or "")
+    if not re.fullmatch(r"https://[^\s\"'<>]+", u):
+        return ""
+    return f'<a class="fonte" href="{e(u)}" target="_blank" rel="noopener">{e(testo or "Fonte")}</a>'
+
+
+def scheda_titolo(t):
+    if not t:
+        return ""
+    parti = []
+    if t.get("cosaFai"):
+        parti.append(f'<p><b>Cosa fai:</b> {e(t["cosaFai"])}</p>')
+    ctl = {c.get("k"): c for c in t.get("controlli") or []}
+    if ctl:
+        righe = ""
+        for k, nome in CONTROLLI:
+            c = ctl.get(k) or {}
+            es = c.get("esito") if c.get("esito") in SEGNO else "nd"
+            righe += (f'<div class="ctl"><span class="m {es}">{SEGNO[es]}</span><span><b>{e(nome)}</b>'
+                      f'{" · " + e(c.get("nota")) if c.get("nota") else ""}</span></div>')
+        parti.append(righe)
+    for titolo, k in (("Cosa succede", "evento"), ("Perché lo seguiamo", "perche"), ("Cosa dicono i dati", "dati"),
+                      ("Cosa può andare storto", "rischi"), ("Quanti soldi ha", "cassa")):
+        if t.get(k):
+            parti.append(f'<p><b>{titolo}:</b> {e(t[k])}</p>')
+    fonti = " · ".join(x for x in (link_https(f.get("u"), f.get("t")) for f in t.get("fonti") or []) if x)
+    if fonti:
+        parti.append(f'<p>{fonti}</p>')
+    if not parti:
+        return ""
+    return f'<details class="sk"><summary>Scheda: cosa fai e i 5 controlli</summary>{"".join(parti)}</details>'
+
+
+def calcolo_op(o):
+    """Come nell'Excel: RENDITA/PERDITA = uscita / entrata x importo - importo; R/P DEF = leva x RENDITA/PERDITA."""
+    num = lambda v: v if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+    imp, pe, pu, lv, reale = (num(o.get(k)) for k in ("importo", "prezzoEntrata", "prezzoUscita", "leva", "risultatoEtoro"))
+    rp = (pu / pe) * imp - imp if imp is not None and pe and pu else None
+    rpdef = rp * lv if rp is not None and lv is not None else None
+    ris = reale if reale is not None else rpdef
+    return ris, (ris / imp if ris is not None and imp else None), reale is not None
+
+
+def data_breve(iso):
+    try:
+        return dt.date.fromisoformat(str(iso)[:10]).strftime("%d/%m/%y")
+    except ValueError:
+        return "…"
+
+
+def vista_storico(dati):
+    ops = []
+    for o in dati.get("operazioni", []):
+        ris, quota, vero = calcolo_op(o)
+        ops.append(dict(o, ris=ris, quota=quota, vero=vero))
+    if not ops:
+        carta('<div class="sub">Ancora nessuna operazione. Mandami lo screenshot di eToro o scrivimele in chat.</div>')
+        return
+    chiuse = [o for o in ops if o["ris"] is not None]
+    todo = [o for o in ops if o["ris"] is None]
+    vinte = [o for o in chiuse if o["ris"] > 0]
+    perse = [o for o in chiuse if o["ris"] < 0]
+    if chiuse:
+        tot = sum(o["ris"] for o in chiuse)
+        wp, lp = len(vinte) / len(chiuse) * 100, len(perse) / len(chiuse) * 100
+        carta(f'<div class="eyebrow" style="margin-top:0">Risultato delle {len(chiuse)} operazioni chiuse</div>'
+              f'<div class="res {cls(tot)}">{eur(tot, segno=True)}</div>'
+              f'<div class="wl"><i style="width:{wp:.1f}%;background:var(--yes)"></i><i style="flex:1"></i>'
+              f'<i style="width:{lp:.1f}%;background:var(--no)"></i></div>'
+              f'<div class="sub"><b class="up">{len(vinte)}</b> in guadagno · <b class="down">{len(perse)}</b> in perdita. '
+              f'Somma delle colonne R/P DEF (con la leva); dove c\'è il risultato vero di eToro conta quello.'
+              f'{f" Le {len(todo)} da completare non sono nel totale." if todo else ""}</div>')
+        media = lambda a: sum(o["ris"] for o in a) / len(a) if a else None
+        best = max(chiuse, key=lambda o: o["ris"])
+        worst = min(chiuse, key=lambda o: o["ris"])
+        box = lambda v, testo: (f'<div class="card"><b class="{cls(v or 0)}">{eur(v, segno=True) if v is not None else "–"}</b>'
+                                f'<span class="sub">{testo}</span></div>')
+        md('<div class="grid2">' + box(media(vinte), "guadagno medio quando va bene") +
+           box(media(perse), "perdita media quando va male") +
+           box(best["ris"], f'la migliore: {e(best.get("titolo"))}, {data_breve(best.get("dataUscita"))}') +
+           box(worst["ris"], f'la peggiore: {e(worst.get("titolo"))}, {data_breve(worst.get("dataUscita"))}') + '</div>')
+    if todo:
+        avviso(f'<b>{len(todo)} da completare:</b> manca il prezzo di uscita o il risultato. '
+               'Mandami lo screenshot dello storico di eToro e le completo io.')
+    # mese per mese
+    mesi = {}
+    for o in chiuse:
+        k = str(o.get("dataUscita") or o.get("dataEntrata") or "")[:7]
+        if k:
+            mesi.setdefault(k, []).append(o)
+    if mesi:
+        md('<div class="eyebrow">Mese per mese (per data di uscita)</div>')
+        righe = ""
+        for k in sorted(mesi, reverse=True):
+            v = sum(o["ris"] for o in mesi[k])
+            a, m = k.split("-")
+            righe += riga(f'<b style="color:var(--ink)">{MESI[int(m) - 1].capitalize()} {a}</b> · {len(mesi[k])} operazioni',
+                          eur(v, segno=True), cls(v))
+        carta(righe)
+    # titolo per titolo
+    per_tk = {}
+    for o in chiuse:
+        per_tk.setdefault(o.get("titolo"), []).append(o["ris"])
+    if per_tk:
+        righe = "".join(riga(f'<b class="mono" style="color:var(--ink)">{e(tk)}</b> · {len(v)}', eur(sum(v), segno=True),
+                             cls(sum(v))) for tk, v in sorted(per_tk.items(), key=lambda kv: sum(kv[1])))
+        md(f'<div class="card"><details class="sk" style="border:0;margin:0;padding:0"><summary>Titolo per titolo</summary>'
+           f'<div style="margin-top:6px">{righe}</div></details></div>')
+    # elenco
+    md('<div class="eyebrow">Tutte le operazioni, dalla più recente</div>')
+    filtro = st.segmented_control("Filtro storico", [f"Tutte {len(ops)}", f"Da completare {len(todo)}",
+                                                     f"In guadagno {len(vinte)}", f"In perdita {len(perse)}"],
+                                  key="filtro_storico", label_visibility="collapsed") or "Tutte"
+    lista = (todo if filtro.startswith("Da completare") else vinte if filtro.startswith("In guadagno")
+             else perse if filtro.startswith("In perdita") else ops)
+    lista = sorted(lista, key=lambda o: (str(o.get("dataEntrata") or ""), o.get("nr") or 0), reverse=True)
+    righe = ""
+    for o in lista:
+        lv = o.get("leva")
+        pe, pu = o.get("prezzoEntrata"), o.get("prezzoUscita")
+        det = (f'{eur(o["importo"]) if isinstance(o.get("importo"), (int, float)) else "?"}'
+               f'{f" · x{lv:g}" if isinstance(lv, (int, float)) else ""} · '
+               f'{prezzo(pe) if isinstance(pe, (int, float)) else "?"} → {prezzo(pu) if isinstance(pu, (int, float)) else "?"}')
+        if o["ris"] is not None:
+            dx = (f'<span class="{cls(o["ris"])}">{eur(o["ris"], segno=True)}</span>'
+                  f'<small>{pct(o["quota"] * 100) if o["quota"] is not None else ""}{" · eToro" if o["vero"] else ""}</small>')
+        else:
+            dx = 'da completare'
+        flag = '<div class="d" style="color:var(--may)">dati da controllare</div>' if o.get("controllare") else ""
+        righe += (f'<div class="op{"" if o["ris"] is not None else " todo"}"><div class="l"><span class="t">{e(o.get("titolo"))}</span> '
+                  f'<span class="d">{data_breve(o.get("dataEntrata"))} → {data_breve(o.get("dataUscita")) if o.get("dataUscita") else "…"}</span>'
+                  f'<div class="d">{det}</div>{flag}</div><div class="r">{dx}</div></div>')
+    carta(righe or '<div class="sub">Nessuna operazione in questo filtro.</div>')
+
+
+def vista_calendario(dati, oggi):
+    passati = st.toggle("Mostra anche i giorni passati", key="cal_passati")
+    tipi = {"ordine": ("Ordine", "acc", "ord"), "decisione": ("Decisione FDA", "", ""), "mercato": ("Borsa", "", "mer"),
+            "analisi": ("Analisi", "", "mer"), "promemoria": ("Promemoria", "", "")}
+    evs = [c for c in dati.get("calendario", []) if c.get("data") and (passati or c["data"] >= oggi)]
+    if not evs:
+        carta('<div class="sub">Niente in calendario.</div>')
+        return
+    mese = None
+    giorni = {}
+    for c in evs:
+        giorni.setdefault(c["data"], []).append(c)
+    for d in sorted(giorni):
+        if d[:7] != mese:
+            mese = d[:7]
+            a, m = mese.split("-")
+            md(f'<div class="mese">{MESI[int(m) - 1]} {a}</div>')
+        dd = dt.date.fromisoformat(d)
+        corpo = ""
+        for c in sorted(giorni[d], key=lambda x: x.get("seq", 99)):
+            nome, tag, kl = tipi.get(c.get("tipo"), (c.get("tipo") or "", "", ""))
+            if c.get("osserva") == "ribasso":
+                nome, tag = "Osservo al ribasso", "no"
+            fatto = c.get("tipo") == "ordine" and c.get("fatto")
+            corpo += (f'<div class="ev {kl}{" fatto" if fatto else ""}"><span class="tag {tag}" style="margin-left:0">{e(nome)}</span>'
+                      f'{f" <span class=mono>{e(c.get('ora'))}</span>" if c.get("ora") else ""}'
+                      f'{" <span class=tag yes>fatto</span>" if fatto else ""}<div><b>{e(c.get("titolo"))}</b></div>'
+                      f'{f"<div class=sub>{e(c.get('perche'))}</div>" if c.get("perche") else ""}</div>')
+        md(f'<div class="day"><div class="dbox{" oggi" if d == oggi else ""}"><div class="w">{GIORNI[dd.weekday()]}</div>'
+           f'<div class="n">{dd.day:02d}</div><div class="w">{MESI[dd.month - 1][:3]}</div></div><div>{corpo}</div></div>')
+
+
+def vista_news(dati):
+    news = sorted(dati.get("news", []), key=lambda n: n.get("data", ""), reverse=True)
+    if not news:
+        carta('<div class="sub">Nessuna notizia per ora.</div>')
+        return
+    tono = {"negativo": "var(--no)", "positivo": "var(--yes)"}
+    tema = {"titoli": "Titoli", "fda": "Regole FDA", "altri": "Altri settori"}
+    for n in news:
+        f = n.get("fonte") or {}
+        fonte = link_https(f.get("u"), f.get("t")) if isinstance(f, dict) else ""
+        tks = " ".join(f'<span class="tag" style="margin-left:0">{e(t)}</span>' for t in n.get("tickers") or [])
+        carta(f'<div class="sub" style="margin:0"><span class="dot" style="background:{tono.get(n.get("tono"), "var(--mut)")}"></span>'
+              f'<span class="mono">{e(n.get("quando") or giorno(n.get("data", "")))}</span> · {e(tema.get(n.get("tema"), ""))}</div>'
+              f'<h3 style="margin-top:6px">{e(n.get("titolo"))}</h3><div style="font-size:.92rem;line-height:1.45">{e(n.get("testo"))}</div>'
+              f'{f"<div style=margin-top:6px>{tks}</div>" if tks else ""}{f"<div style=margin-top:4px>{fonte}</div>" if fonte else ""}')
+
+
+def lista_consigliati(dati):
+    c = dati.get("consigliati") or {}
+    return (c.get("lista") if isinstance(c, dict) else c) or []
+
+
+def vista_consigliati(dati, live, oggi, xbi_a=None, s=None, cap=None):
+    """Segnaposto: la vista completa arriva dal thread "Consigliare catalyst con punteggio".
+    Dati: dati["consigliati"] = {"meta": meta/consigliati, "lista": [consigliati/<TICKER> per punteggio]}."""
+    lista = sorted(lista_consigliati(dati), key=lambda c: -(c.get("punteggio") or 0))
+    md('<div class="sub" style="margin:0 2px 10px">Idee per allargare il portafoglio, con un punteggio da 0 a 100. '
+       'Non sono ordini: si entra solo con le regole del piano (semaforo, €90 a x2, limite di €743), '
+       'e le decidiamo insieme la domenica.</div>')
+    if not lista:
+        carta('<div class="sub">La lista dei consigliati è in preparazione: arriva qui appena è pronta.</div>')
+        return
+    agg = max((c.get("aggiornato") or "" for c in lista), default="")
+    for c in lista:
+        tk = c.get("ticker") or ""
+        sym = simbolo(tk)
+        q = live.get(sym, {})
+        pt = c.get("punteggio")
+        kl = "yes" if (pt or 0) >= 70 else ("may" if (pt or 0) >= 50 else "")
+        quando = ""
+        if c.get("data"):
+            try:
+                gg = (dt.date.fromisoformat(c["data"][:10]) - dt.date.fromisoformat(oggi)).days
+                quando = f'{giorno(c["data"])} · tra {gg} giorni' if gg > 0 else giorno(c["data"])
+            except ValueError:
+                quando = e(c.get("data"))
+        elif c.get("quando"):
+            quando = e(c["quando"])
+        righe = ""
+        if quando:
+            righe += riga("Quando", quando)
+        if c.get("settore"):
+            righe += riga("Settore", e(c["settore"]))
+        for v in c.get("voti") or []:
+            righe += riga(e(v.get("nome")), f'{e(v.get("punti"))}/{e(v.get("max"))}')
+        testo = ""
+        for titolo, k in (("Perché", "perche"), ("Rischi", "rischi"), ("Come entrare", "ingresso")):
+            if c.get(k):
+                testo += f'<div class="sub" style="margin-top:6px"><b>{titolo}:</b> {e(c[k])}</div>'
+        fonti = " · ".join(x for x in (link_https(f.get("u"), f.get("t")) for f in c.get("fonti") or []) if x)
+        carta(f'{testa_titolo(tk, c.get("nome", ""), q, sym)}'
+              f'<div class="sub" style="margin-top:6px">{e(c.get("evento"))}'
+              f'{f"<span class=\"tag {kl}\">punteggio {e(pt)}</span>" if pt is not None else ""}</div>'
+              f'<div style="margin-top:6px">{righe}</div>{testo}'
+              f'{f"<div style=margin-top:6px>{fonti}</div>" if fonti else ""}')
+    if agg:
+        md(f'<div class="foot">Lista aggiornata il {giorno(agg)}.</div>')
+
+
 # ---------------------------------------------------------------- pagina
 if not accesso():
     st.stop()
@@ -794,8 +1072,10 @@ if not file_dati():
     st.error("Mancano i dati del piano (dati.json, o dati.enc con la chiave in Secrets): chiedi a Claude.")
     st.stop()
 
-st.segmented_control("Sezione", ["Oggi", "Posizioni", "Decisioni", "Ribasso"], default="Oggi",
-                     key="vista", label_visibility="collapsed")
+VISTE = ["Oggi", "Storico", "Calendario", "Decisioni", "Consigliati", "Posizioni", "Ribasso", "News"]
+if st.session_state.get("vista") not in VISTE:
+    st.session_state["vista"] = "Oggi"
+st.segmented_control("Sezione", VISTE, key="vista", label_visibility="collapsed")
 
 
 @st.fragment(run_every=60)
@@ -809,6 +1089,7 @@ def pagina():
     tickers = set(dati.get("posizioni", {})) | set(dati.get("titoli", {}))
     tickers |= {r.get("ticker") for r in dati.get("ribasso", []) if r.get("stato") != "successo"}
     tickers |= {a.get("ticker") for a in dati.get("altri", [])}
+    tickers |= {c.get("ticker") for c in lista_consigliati(dati)}
     tickers |= {c.get("ticker") for c in ordini_aperti(dati, oggi) + decisioni(dati, oggi)}
     simboli = tuple(sorted({simbolo(t) for t in tickers if t} | {"XBI", "^VIX"}))
 
@@ -840,12 +1121,21 @@ def pagina():
         vista_posizioni(dati, live, cap)
     elif vista == "Decisioni":
         vista_decisioni(dati, live, oggi, xbi_a)
+    elif vista == "Storico":
+        vista_storico(dati)
+    elif vista == "Calendario":
+        vista_calendario(dati, oggi)
+    elif vista == "News":
+        vista_news(dati)
+    elif vista == "Consigliati":
+        vista_consigliati(dati, live, oggi, xbi_a, s, cap)
     else:
         vista_ribasso(dati, live, xbi_a)
 
     md(f'<div class="foot">Piano aggiornato il {giorno(dati.get("generato", oggi))} alle '
-       f'{(dati.get("generato") or "")[11:16]} dall\'app Catalyst. Prezzi da Yahoo Finance, ritardo di pochi secondi '
-       f'per le azioni USA. Le stime servono a orientarti: per comprare e vendere fa fede eToro.</div>')
+       f'{(dati.get("generato") or "")[11:16]}. Prezzi da Yahoo Finance, ritardo di pochi secondi '
+       f'per le azioni USA. Le stime servono a orientarti: per comprare e vendere fa fede eToro. '
+       f'Ordini fatti e operazioni nuove: scrivimeli in chat, li inserisco io.</div>')
 
 
 pagina()
