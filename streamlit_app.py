@@ -60,8 +60,9 @@ st.markdown("""<style>
 --l-rosso:#F0453A;--l-giallo:#F2B233;--l-verde:#2FBF71;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;}
 html,body,[class*="st-"],.stMarkdown{font-family:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
 .stApp{background:var(--bg);}
-.block-container{padding:0.6rem 1rem 3rem;max-width:720px;}
-header[data-testid="stHeader"]{background:transparent;height:2rem;}
+.block-container{padding:0.8rem 1rem 3rem;max-width:720px;}
+/* Su Streamlit Cloud la barra in alto (60px, sopra a tutto) copriva le sezioni e il codice: la nascondo */
+header[data-testid="stHeader"]{display:none !important;}
 #MainMenu,footer,[data-testid="stToolbar"] [data-testid="stToolbarActions"]{visibility:hidden;}
 .cb-top{margin:6px 2px 10px;}
 .cb-top h1{font-family:Archivo,"Arial Narrow",sans-serif;font-weight:800;font-size:1.45rem;letter-spacing:-.01em;margin:0;padding:0;color:var(--ink);}
