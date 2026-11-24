@@ -1019,51 +1019,160 @@ def lista_consigliati(dati):
     return (c.get("lista") if isinstance(c, dict) else c) or []
 
 
+STATO_CONS = {"consigliato": ("yes", "consigliato"), "da valutare": ("may", "da valutare"),
+              "solo osservo": ("", "solo da osservare"), "scartato": ("no", "scartato")}
+
+
+def sedute_usa(a, b):
+    """Sedute di Borsa USA dopo a e fino a b compreso (stesse feste di punteggio.py)."""
+    feste = {"2026-11-26", "2026-12-25", "2027-01-01", "2027-01-18", "2027-02-15", "2027-03-26",
+             "2027-05-31", "2027-06-18", "2027-07-05"}
+    n, d = 0, a
+    while d < b:
+        d += dt.timedelta(days=1)
+        if d.weekday() < 5 and d.isoformat() not in feste:
+            n += 1
+    return n
+
+
+def finestra_ora(c, oggi):
+    """Stato della finestra d'ingresso, ricalcolato ogni giorno dalle date salvate."""
+    en = c.get("entrata") or {}
+    try:
+        da, entro = dt.date.fromisoformat(en["da"]), dt.date.fromisoformat(en["entro"])
+        o = dt.date.fromisoformat(oggi)
+    except (KeyError, TypeError, ValueError):
+        return None, ""
+    if o < da:
+        n = sedute_usa(o, da)
+        return "presto", f"si apre {giorno(en['da'])}, tra {n} sedute"
+    if o <= entro:
+        return "aperta", f"aperta fino a {giorno(en['entro'])}"
+    return "passata", f"passata il {giorno(en['entro'])}"
+
+
+def carta_consigliato(c, live, oggi, xbi_a, rosso):
+    tk = c.get("ticker") or ""
+    sym = simbolo(tk)
+    q = live.get(sym, {})
+    pt = c.get("punteggio") or 0
+    kl, lab = STATO_CONS.get(c.get("stato"), ("", e(c.get("stato"))))
+    tags = f'<span class="tag {kl}">{pt} · {lab}</span>' if c.get("stato") != "scartato" else f'<span class="tag no">{lab}</span>'
+    tags += '<span class="tag acc">nel piano</span>' if c.get("nelCalendario") else '<span class="tag">nuovo</span>'
+    col = "var(--yes)" if pt >= 70 else ("var(--may)" if pt >= 50 else "var(--mut)")
+    barra = (f'<div class="bar" aria-label="punteggio {pt} su 100"><span style="width:{max(0, min(pt, 100))}%;'
+             f'background:{col}"></span></div>') if c.get("stato") != "scartato" else ""
+    righe = ""
+    if c.get("data") and c.get("stato") != "scartato":
+        try:
+            gg = (dt.date.fromisoformat(c["data"][:10]) - dt.date.fromisoformat(oggi)).days
+            righe += riga("Decisione FDA", f'{giorno(c["data"])} · tra {gg} giorni' if gg > 0 else giorno(c["data"]))
+        except ValueError:
+            pass
+        stato_f, txt_f = finestra_ora(c, oggi) if not c.get("dalPiano") else (None, "")
+        if stato_f:
+            cl_f = {"aperta": "up", "presto": "", "passata": "down"}[stato_f]
+            righe += riga("Finestra per comprare", e(txt_f), cl_f)
+        if c.get("uscita") and not c.get("dalPiano"):
+            righe += riga("Vendi tutto entro", giorno(c["uscita"]))
+    elif c.get("quando"):
+        righe += riga("Quando", e(c["quando"]))
+    a = andamento(sym, live) if c.get("stato") != "scartato" else {}
+    m3 = a.get("m3") if a.get("m3") is not None else c.get("salita3m")
+    if m3 is not None and c.get("stato") != "scartato":
+        righe += riga("Salita in 3 mesi (sotto 50%)", pct(m3), "down" if m3 >= 50 else "")
+    allarme = ""
+    if c.get("stato") != "scartato" and (debole(a, xbi_a or {}) if a else c.get("debole")):
+        allarme = ('<div class="alert no" style="margin:8px 0 0">Segnale di debolezza: scende mentre il biotech tiene. '
+                   'Se è così quando si apre la finestra, non si compra.</div>')
+    come = c.get("cosaFai") or c.get("ingresso")
+    testo = f'<div class="sub" style="margin-top:6px"><b>Cosa fai:</b> {e(come)}</div>' if come else ""
+    if rosso and c.get("stato") in ("consigliato", "da valutare"):
+        testo += '<div class="sub" style="margin-top:4px;color:var(--no)">Oggi il semaforo è rosso: si aspetta.</div>'
+    det = ""
+    voti = c.get("voti") or []
+    if voti:
+        det += "".join(f'<div class="row" style="display:block"><span class="k"><b>{e(v.get("nome"))}</b> · '
+                       f'{e(str(v.get("punti", "")))}/{e(str(v.get("max", "")))}</span><div class="sub" style="margin:2px 0 0">'
+                       f'{e(v.get("nota"))}</div></div>' for v in voti)
+    for titolo, k in (("Perché", "perche"), ("Cosa può andare storto", "rischi")):
+        if c.get(k) and c.get(k) != "—":
+            det += f'<p><b>{titolo}:</b> {e(c[k])}</p>'
+    fonti = " · ".join(x for x in (link_https(f.get("u"), f.get("t")) for f in c.get("fonti") or []) if x)
+    if fonti:
+        det += f"<p>{fonti}</p>"
+    if det:
+        det = (f'<details class="sk"><summary>'
+               f'{"Come è fatto il punteggio" if voti else "Dettagli e fonti"}</summary>{det}</details>')
+    carta(f'{testa_titolo(tk, c.get("nome", ""), q, sym)}'
+          f'<div class="sub" style="margin-top:6px">{e(c.get("evento"))}{tags}</div>{barra}'
+          f'<div style="margin-top:6px">{righe}</div>{allarme}{testo}{det}')
+
+
 def vista_consigliati(dati, live, oggi, xbi_a=None, s=None, cap=None):
-    """Segnaposto: la vista completa arriva dal thread "Consigliare catalyst con punteggio".
-    Dati: dati["consigliati"] = {"meta": meta/consigliati, "lista": [consigliati/<TICKER> per punteggio]}."""
+    """Lista dei catalyst consigliati con punteggio (thread "Consigliare catalyst con punteggio").
+    Dati: dati["consigliati"] = {"meta": meta/consigliati, "lista": [consigliati/<TICKER>]};
+    li calcola /mnt/project-files/app-catalyst/consigliati/punteggio.py e li scrive nel db dell'app."""
+    blocco = dati.get("consigliati") or {}
+    meta = blocco.get("meta", {}) if isinstance(blocco, dict) else {}
     lista = sorted(lista_consigliati(dati), key=lambda c: -(c.get("punteggio") or 0))
-    md('<div class="sub" style="margin:0 2px 10px">Idee per allargare il portafoglio, con un punteggio da 0 a 100. '
-       'Non sono ordini: si entra solo con le regole del piano (semaforo, €90 a x2, limite di €743), '
-       'e le decidiamo insieme la domenica.</div>')
+    md('<div class="sub" style="margin:0 2px 10px">Idee per avere più titoli in portafoglio, con un punteggio '
+       'da 0 a 100. Non sono ordini: quelli nuovi li confermiamo insieme la domenica.</div>')
     if not lista:
         carta('<div class="sub">La lista dei consigliati è in preparazione: arriva qui appena è pronta.</div>')
         return
-    agg = max((c.get("aggiornato") or "" for c in lista), default="")
-    for c in lista:
-        tk = c.get("ticker") or ""
-        sym = simbolo(tk)
-        q = live.get(sym, {})
-        pt = c.get("punteggio")
-        kl = "yes" if (pt or 0) >= 70 else ("may" if (pt or 0) >= 50 else "")
-        quando = ""
-        if c.get("data"):
-            try:
-                gg = (dt.date.fromisoformat(c["data"][:10]) - dt.date.fromisoformat(oggi)).days
-                quando = f'{giorno(c["data"])} · tra {gg} giorni' if gg > 0 else giorno(c["data"])
-            except ValueError:
-                quando = e(c.get("data"))
-        elif c.get("quando"):
-            quando = e(c["quando"])
-        righe = ""
-        if quando:
-            righe += riga("Quando", quando)
-        if c.get("settore"):
-            righe += riga("Settore", e(c["settore"]))
-        for v in c.get("voti") or []:
-            righe += riga(e(v.get("nome")), f'{e(v.get("punti"))}/{e(v.get("max"))}')
-        testo = ""
-        for titolo, k in (("Perché", "perche"), ("Rischi", "rischi"), ("Come entrare", "ingresso")):
-            if c.get(k):
-                testo += f'<div class="sub" style="margin-top:6px"><b>{titolo}:</b> {e(c[k])}</div>'
-        fonti = " · ".join(x for x in (link_https(f.get("u"), f.get("t")) for f in c.get("fonti") or []) if x)
-        carta(f'{testa_titolo(tk, c.get("nome", ""), q, sym)}'
-              f'<div class="sub" style="margin-top:6px">{e(c.get("evento"))}'
-              f'{f"<span class=\"tag {kl}\">punteggio {e(pt)}</span>" if pt is not None else ""}</div>'
-              f'<div style="margin-top:6px">{righe}</div>{testo}'
-              f'{f"<div style=margin-top:6px>{fonti}</div>" if fonti else ""}')
+
+    stato = dati.get("stato", {})
+    capitale = (cap or {}).get("stima") or stato.get("capitaleEtoro")
+    limite = stato.get("limite") or meta.get("limite") or 743
+    bud = meta.get("budget") or {}
+    marg, leva, stop = bud.get("margine", 90), bud.get("leva", 2), bud.get("stop", 0.2)
+    perdita = marg * leva * stop
+    aperte = len(dati.get("posizioni") or {})
+    if capitale and perdita:
+        regge = max(0, int((capitale - limite) // perdita))
+        liberi = max(0, regge - aperte)
+        piu = regge + 2
+        marg_piu = int(((capitale - limite) / (piu * leva * stop)) // 5 * 5) if capitale > limite else 0
+        testo = (f'Con circa {eur(capitale, 0)} e il limite di {eur(limite, 0)} reggi <b>{regge} stop</b> da '
+                 f'{eur(perdita, 0)}: fino a {regge} titoli da {eur(marg, 0)} a x{leva}. '
+                 f'Ne hai {aperte} aperti, quindi <b>{liberi} posti liberi</b>.')
+        if marg_piu >= 20:
+            testo += f' Per averne {piu} insieme servono {eur(marg_piu, 0)} a titolo.'
+        nota = f'<div class="sub" style="margin-top:6px">{e(bud["nota"])}</div>' if bud.get("nota") else ""
+        carta(f'<div class="eyebrow" style="margin:0 0 4px">Quanti titoli puoi tenere</div>'
+              f'<div style="font-size:.95rem;line-height:1.45">{testo}</div>{nota}')
+    colore = (s or {}).get("ora") or (s or {}).get("uff") or meta.get("semaforo")
+    rosso = colore == "rosso"
+    if rosso:
+        avviso("<b>Semaforo rosso:</b> oggi non si compra niente, nemmeno da questa lista. "
+               "I punteggi tolgono 5 punti a tutti finché resta rosso.", "no")
+    for n in meta.get("novita") or []:
+        avviso(e(n), "may")
+
+    attivi = [c for c in lista if c.get("stato") in ("consigliato", "da valutare")]
+    osserva = [c for c in lista if c.get("stato") == "solo osservo"]
+    scartati = [c for c in lista if c.get("stato") == "scartato"]
+    for c in attivi:
+        carta_consigliato(c, live, oggi, xbi_a, rosso)
+    if osserva:
+        md('<div class="eyebrow">Solo da osservare (sotto 50)</div>')
+        for c in osserva:
+            carta_consigliato(c, live, oggi, xbi_a, rosso)
+    if scartati:
+        md('<div class="eyebrow">Tolti dalla lista</div>')
+        for c in scartati:
+            carta_consigliato(c, live, oggi, xbi_a, rosso)
+
+    regole = "".join(f"<li>{e(r)}</li>" for r in meta.get("regole") or [])
+    spieg = meta.get("spiegazione")
+    if spieg or regole:
+        carta(f'<details class="sk" style="margin:0;border:0;padding:0"><summary>Come leggere il punteggio</summary>'
+              f'{f"<p>{e(spieg)}</p>" if spieg else ""}{f"<ul class=passi>{regole}</ul>" if regole else ""}</details>')
+    agg = meta.get("aggiornato") or max((c.get("aggiornato") or "" for c in lista), default="")
     if agg:
-        md(f'<div class="foot">Lista aggiornata il {giorno(agg)}.</div>')
+        md(f'<div class="foot">Punteggi calcolati il {giorno(agg)} alle {agg[11:16]}: si aggiornano la domenica '
+           f'e ogni 3 giorni. Prezzi e salita qui sopra sono in tempo reale.</div>')
 
 
 # ---------------------------------------------------------------- pagina
